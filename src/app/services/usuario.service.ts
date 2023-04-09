@@ -1,13 +1,16 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
+import { Router } from '@angular/router';
+
 import { catchError, map, tap } from "rxjs/operators";
 import { Observable, of } from 'rxjs';
-import { Router } from '@angular/router';
 
 import { environment } from 'src/environments/environment';
 
 import { RegisterForm } from '../interfaces/register-form.interface';
 import { LoginForm } from '../interfaces/login-form.interface';
+import { CargarUsuario } from '../interfaces/cargar-usuarios.interface';
+
 import { Usuario } from '../models/usuario.model';
 
 declare const google: any;
@@ -29,6 +32,14 @@ export class UsuarioService {
 
   get uid(): string {
     return this.usuario.uid || '';
+  }
+
+  get headers() {
+    return {
+      headers: {
+        'x-token': this.token
+      }
+    }
   }
 
   logout() {
@@ -66,11 +77,7 @@ export class UsuarioService {
 
   actualizarPerfil(data: { nombre: string, email: string, role?: string }) {
     data = { ...data, role: this.usuario.role }
-    return this.http.put(`${base_url}/usuarios/${this.uid}`, data, {
-      headers: {
-        'x-token': this.token
-      }
-    });
+    return this.http.put(`${base_url}/usuarios/${this.uid}`, data, this.headers);
   }
 
   login(formData: LoginForm) {
@@ -90,4 +97,28 @@ export class UsuarioService {
         })
       );
   }
+
+  cargarUsuarios(desde: number = 0) {
+    return this.http.get<CargarUsuario>(`${base_url}/usuarios?desde=${desde}`, this.headers)
+      .pipe(
+        map(resp => {
+          const usuarios = resp.usuarios.map(
+            user => new Usuario(user.nombre, user.email, '', user.img, user.google, user.role, user.uid)
+          );
+          return {
+            total: resp.total,
+            usuarios
+          };
+        })
+      )
+  }
+
+  eliminarUsuario(usuario: Usuario) {
+    return this.http.delete(`${base_url}/usuarios/${usuario.uid}`, this.headers);
+  }
+
+  guardarUsuario(usuario: Usuario) {
+    return this.http.put(`${base_url}/usuarios/${this.uid}`, usuario, this.headers);
+  }
+
 }
